@@ -2,33 +2,21 @@ use std::net::{TcpStream};
 use std::io::{Read, Write};
 use std::str::from_utf8;
 use std::process::exit;
-
-// used for print directory file op
+//use std::env;
 use std::io;
-use std::fs::{self};
+use std::fs::{self, DirEntry};
 use std::path::Path;
 
-// used for hidden dir file op
-use walkdir::DirEntry as WalkDirEntry;
-use walkdir::WalkDir;
 
 // Commands the client can use
-const PRINT_DIR: &str = "printdir";        // lists contents of given directory
-const PRINT_HIDDEN: &str = "ls -al";       // lists all hidden (.) files and directories
-const QUIT: &str = "quit";                 // quits the file-client using exit()
-const HELP: &str = "help";                 // lists all possible file operations/commands
+const PRINT_DIR: &str = "printdir";
+const QUIT: &str = "quit";
 /*
     TODO Commands:
+    HELP            - "help"    ---- prints all possible commands the user can call
+    PRINT_HIDDEN    - "ls -al"  ---- prints all hidden files and directories 
     SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
  */
-
-// returns true if file or directory is hidden; false otherwise
-fn is_hidden(entry: &WalkDirEntry) -> bool {
-    entry.file_name()
-         .to_str()
-         .map(|s| s.starts_with("."))
-         .unwrap_or(false)
-}
 
 fn main() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
@@ -38,21 +26,14 @@ fn main() -> io::Result<()> {
             let msg = b"Hello!";
 
             stream.write(msg).unwrap();
-            //println!("Sent Hello, awaiting reply...");
+            println!("Sent Hello, awaiting reply...");
 
             let mut data = [0 as u8; 6]; // using 6 byte buffer
             match stream.read_exact(&mut data) {
                 Ok(_) => {
                     if &data == msg {
-                        //println!("Reply is ok!");
+                        println!("Reply is ok!");
                         println!("Beginning user input loop...");
-                        // lists all possible file operations/commands
-                                println!("*** File Operations / Commands ***");
-                                println!("[command]           [shorthand]           [output]");
-                                println!("printdir            pdir                  prints all contents of a directory");
-                                println!("show-hidden         ls -al                prints all hidden files and directories of current working directory");
-                                println!("help                h                     lists file operations / commands to user");
-                                println!("quit                q                     exits the server");
                         // loop for receiving input by the user
                         loop {
                             println!("Please enter a command: ");
@@ -60,13 +41,13 @@ fn main() -> io::Result<()> {
                             // collect user input
                             io::stdin().read_line(&mut input)
                                 .expect("Error reading input");
-                            // TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! 
+                            /// TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! ///
                             // check which command collected from input 
-                            if input.trim() == QUIT || input.trim() == "q" {
+                            if input.trim() == QUIT {
                                 println!("exiting the server...");
                                 exit(0);
                                 //break
-                            } else if input.trim() == PRINT_DIR || input.trim() == "pdir" {
+                            } else if input.trim() == PRINT_DIR {
                                 // prompt for path to target directory
                                 println!("Specify a directory to print the contents of:");
                                 let mut dir_input = String::new();
@@ -91,26 +72,9 @@ fn main() -> io::Result<()> {
                                 for file in entries {
                                     println!("{:?}", file);
                                 }
-                            } else if input.trim() == PRINT_HIDDEN || input.trim() == "ls -al" {
-                                // walk current directory and print all hidden (.) directories and files
-                                WalkDir::new(".")
-                                    .into_iter()
-                                    .filter_entry(|e| is_hidden(e))
-                                    .filter_map(|v| v.ok())
-                                    .for_each(|x| println!("{}", x.path().display()));
-                            } else if input.trim() == HELP || input.trim() == "h" {
-                                // lists all possible file operations/commands
-                                println!();
-                                println!("*** File Operations / Commands ***");
-                                println!("[command]           [shorthand]           [output]");
-                                println!("printdir            pdir                  prints all contents of a directory");
-                                println!("show-hidden         ls -al                prints all hidden files and directories of current working directory");
-                                println!("help                h                     lists file operations / commands to user");
-                                println!("quit                q                     exits the server");
-                            } else {
-                                println!("Please enter a valid file operation / command");
                             }
                         }
+
                     } else {
                         let text = from_utf8(&data).unwrap();
                         println!("Unexpected reply: {}", text);
