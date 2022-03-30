@@ -41,7 +41,7 @@ fn main() -> io::Result<()> {
                             // collect user input
                             io::stdin().read_line(&mut input)
                                 .expect("Error reading input");
-                            /// TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! ///
+                            // TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! //
                             // check which command collected from input 
                             if input.trim() == QUIT {
                                 println!("exiting the server...");
@@ -56,22 +56,8 @@ fn main() -> io::Result<()> {
                                 let directory_name = format!("./{}", dir_input.trim());  
                                 println!("dir specified: {}", directory_name);
 
-                                // print contents of given directory
-                                // convert String(directory_name) to Path
-                                let from_path = Path::new(&directory_name);    
-
-                                // TODO - HANDLE DIRECTORY ERRORS (i.e., does not exist, etc) !!! ///
-                                let mut entries = fs::read_dir(from_path)?
-                                    .map(|res| res.map(|e| e.path()))
-                                    .collect::<Result<Vec<_>, io::Error>>()?;
-
-                                // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-                                // ordering is required the entries should be explicitly sorted.
-                                entries.sort();
-                                // The entries have now been sorted by their path.
-                                for file in entries {
-                                    println!("{:?}", file);
-                                }
+                                stream.write((PRINT_DIR.to_owned()+"#"+&directory_name).as_bytes()).unwrap();
+                                
                             }
                         }
 
