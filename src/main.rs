@@ -60,6 +60,7 @@ fn main() -> io::Result<()> {
                             // collect user input
                             io::stdin().read_line(&mut input)
                                 .expect("Error reading input");
+                            stream.write(input.as_bytes()).unwrap();                                
                             // check which command collected from input 
                             if input.trim() == QUIT || input.trim() == "q" {
                                 println!("exiting the server...");
@@ -77,7 +78,8 @@ fn main() -> io::Result<()> {
                                 //let from_path = Path::new(&directory_name);    
 
                                 // TODO send this path to file-server 
-                                stream.write(input.as_bytes()).unwrap();                                
+                                stream.write(directory_name.as_bytes()).unwrap();
+                                let mut data = [0 as u8; 6]; // using 6 byte buffer                               
                                 match stream.read_exact(&mut data) {
                                     Ok(_) => {
                                         if &data == directory_name.as_bytes() {
@@ -112,8 +114,8 @@ fn main() -> io::Result<()> {
                             }
                         }
                     //} else {
-                        let text = from_utf8(&data).unwrap();
-                        println!("Unexpected reply: {}", text);
+                        // let text = from_utf8(&data).unwrap();
+                        // println!("Unexpected reply: {}", text);
                     //} // if
                 //}, // Ok
                 //Err(e) => {
