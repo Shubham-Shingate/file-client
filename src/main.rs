@@ -35,15 +35,15 @@ fn main() -> io::Result<()> {
         Ok(mut stream) => {
             println!("Successfully connected to server in port 3333");
 
-            let msg = b"Hello!";
+            //let mut msg = b"Hello!";
 
-            stream.write(msg).unwrap();
+            //stream.write(msg).unwrap(); // send message to file-server
             //println!("Sent Hello, awaiting reply...");
 
             let mut data = [0 as u8; 6]; // using 6 byte buffer
-            match stream.read_exact(&mut data) {
-                Ok(_) => {
-                    if &data == msg {
+            //match stream.read_exact(&mut data) {
+                //Ok(_) => {
+                    //if &data == msg {
                         //println!("Reply is ok!");
                         println!("Beginning user input loop...");
                         // lists all possible file operations/commands
@@ -74,11 +74,26 @@ fn main() -> io::Result<()> {
                                 // println!("dir specified: {}", directory_name); 
                                
                                 // convert String(directory_name) to Path
-                                let from_path = Path::new(&directory_name);    
+                                //let from_path = Path::new(&directory_name);    
 
-                                 // TODO send this path to file-server   
-                                 
-                                 // TODO receive Vec<String> from file-server and print here
+                                // TODO send this path to file-server 
+                                stream.write(input.as_bytes()).unwrap();                                
+                                match stream.read_exact(&mut data) {
+                                    Ok(_) => {
+                                        if &data == directory_name.as_bytes() {
+                                            println!("Reply is ok!");
+                                            stream.write(directory_name.as_bytes()).unwrap();
+                                        } else {
+                                            let text = from_utf8(&data).unwrap();
+                                            println!("Unexpected reply: {}", text);
+                                        } // if
+                                    }, // Ok
+                                    Err(e) => {
+                                        println!("Failed to receive data: {}", e);
+                                    } // Err
+                                } // match
+
+                                // TODO receive Vec<String> from file-server and print here
 
                             } else if input.trim() == PRINT_HIDDEN || input.trim() == "ls -al" {
                                 // prompt file-server to call handle_print_hidden()
@@ -96,15 +111,15 @@ fn main() -> io::Result<()> {
                                 println!("Please enter a valid file operation / command");
                             }
                         }
-                    } else {
+                    //} else {
                         let text = from_utf8(&data).unwrap();
                         println!("Unexpected reply: {}", text);
-                    }
-                },
-                Err(e) => {
-                    println!("Failed to receive data: {}", e);
-                }
-            }
+                    //} // if
+                //}, // Ok
+                //Err(e) => {
+                    //println!("Failed to receive data: {}", e);
+                //} // Err
+            //} // match
         },
         Err(e) => {
             println!("Failed to connect: {}", e);
