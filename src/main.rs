@@ -1,81 +1,64 @@
-use std::net::{TcpStream};
-use std::io::{Read, Write};
-use std::str::from_utf8;
-use std::process::exit;
-//use std::env;
+mod lib;
+mod constants;
+
+use lib::LinesCodec;
+
 use std::io;
-use std::fs::{self, DirEntry};
-use std::path::Path;
-
-
-// Commands the client can use
-const PRINT_DIR: &str = "printdir";
-const QUIT: &str = "quit";
-/*
-    TODO Commands:
-    HELP            - "help"    ---- prints all possible commands the user can call
-    PRINT_HIDDEN    - "ls -al"  ---- prints all hidden files and directories 
-    SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
- */
+use std::net::TcpStream;
+use std::process::exit;
 
 fn main() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
-        Ok(mut stream) => {
+        Ok(stream) => {
             println!("Successfully connected to server in port 3333");
+            let mut codec = LinesCodec::new(stream)?;
 
-            let msg = b"Hello!";
+            //Perform initial handshake
+            let msg = constants::HELLO;
+            codec.send_message(msg)?;
+            println!("Performing initial handshake....");
 
-            stream.write(msg).unwrap();
-            println!("Sent Hello, awaiting reply...");
+            let mut data = String::new();
+            data = codec.read_message()?;
+            println!("{}", data);
 
-            let mut data = [0 as u8; 6]; // using 6 byte buffer
-            match stream.read_exact(&mut data) {
-                Ok(_) => {
-                    if &data == msg {
-                        println!("Reply is ok!");
-                        println!("Beginning user input loop...");
-                        // loop for receiving input by the user
-                        loop {
-                            println!("Please enter a command: ");
-                            let mut input = String::new();
-                            // collect user input
-                            io::stdin().read_line(&mut input)
-                                .expect("Error reading input");
-                            // TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! //
-                            // check which command collected from input 
-                            if input.trim() == QUIT {
-                                println!("exiting the server...");
-                                exit(0);
-                                //break
-                            } else if input.trim() == PRINT_DIR {
-                                // prompt for path to target directory
-                                println!("Specify a directory to print the contents of:");
-                                let mut dir_input = String::new();
-                                io::stdin().read_line(&mut dir_input)
-                                    .expect("Error reading input");
-                                let directory_name = format!("./{}", dir_input.trim());  
-                                println!("dir specified: {}", directory_name);
+            if &data == msg {
+                //Initial Handshake successful
+                println!("Initial handshake was successful !! \n Beginning user input loop...");
 
-                                stream.write((PRINT_DIR.to_owned()+"#"+&directory_name).as_bytes()).unwrap();
-                                
-                            }
-                        }
+                // loop over user input
+                loop {
+                    println!("CMD>>");
+                    let mut input = String::new();
+                    // collect user input
+                    io::stdin().read_line(&mut input).expect("Error reading input");
 
+                    if input.trim() == constants::QUIT {
+                        println!("exiting the server...");
+                        exit(0);
+                    } else if input.trim() == constants::PRINT_DIR {
+                        // prompt for path to target directory
+                        println!("Specify a directory to print the contents of:");
+                        let mut dir_input = String::new();
+                        io::stdin()
+                            .read_line(&mut dir_input)
+                            .expect("Error reading input");
+                        let directory_name = format!("./{}", dir_input.trim());
+                        println!("dir specified: {}", directory_name);
+
+                        //stream.write((PRINT_DIR.to_owned() + "#" + &directory_name).as_bytes()).unwrap();
                     } else {
-                        let text = from_utf8(&data).unwrap();
-                        println!("Unexpected reply: {}", text);
+
                     }
-                },
-                Err(e) => {
-                    println!("Failed to receive data: {}", e);
                 }
+            } else {
+                println!("Unexpected reply: {}", data);
             }
-        },
+        }
         Err(e) => {
             println!("Failed to connect: {}", e);
         }
     }
     println!("Terminated.");
-
     Ok(())
 }
