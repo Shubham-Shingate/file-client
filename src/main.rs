@@ -9,12 +9,12 @@ use std::path::Path;
 
 
 // Commands the client can use
-const PRINT_DIR: &str = "printdir";
-const QUIT: &str = "quit";
+const PRINT_DIR: &str = "printdir";        // lists contents of given directory
+const PRINT_HIDDEN: &str = "ls -al";       // lists all hidden (.) files and directories
+const QUIT: &str = "quit";                 // quits the file-client using exit()
+const HELP: &str = "help";                 // lists all possible file operations/commands
 /*
     TODO Commands:
-    HELP            - "help"    ---- prints all possible commands the user can call
-    PRINT_HIDDEN    - "ls -al"  ---- prints all hidden files and directories 
     SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
  */
 
@@ -34,6 +34,8 @@ fn main() -> io::Result<()> {
                     if &data == msg {
                         println!("Reply is ok!");
                         println!("Beginning user input loop...");
+                        // lists all possible file operations/commands
+                        printHelp();
                         // loop for receiving input by the user
                         loop {
                             println!("Please enter a command: ");
@@ -41,7 +43,7 @@ fn main() -> io::Result<()> {
                             // collect user input
                             io::stdin().read_line(&mut input)
                                 .expect("Error reading input");
-                            /// TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND !!!! ///
+                            // TODO - HANDLE ERROR WHEN USER INPUTS INCORRECT COMMAND
                             // check which command collected from input 
                             if input.trim() == QUIT {
                                 println!("exiting the server...");
@@ -72,6 +74,11 @@ fn main() -> io::Result<()> {
                                 for file in entries {
                                     println!("{:?}", file);
                                 }
+                            } else if input.trim() == PRINT_HIDDEN {
+                                // print hidden directories/files
+
+                            } else if input.trim() == HELP {
+                                printHelp();
                             }
                         }
 
@@ -92,4 +99,14 @@ fn main() -> io::Result<()> {
     println!("Terminated.");
 
     Ok(())
+}
+
+// prints all file operations/commands available to user
+fn printHelp() {
+    println!("*** File Operations / Commands ***");
+    println!("[command]           [shorthand]           [output]");
+    println!("printdir            pdir                  prints all contents of a directory");
+    println!("show-hidden         ls -al                prints all hidden files and directories of current working directory");
+    println!("help                h                     lists file operations / commands to user");
+    println!("quit                q                     exits the server");
 }
