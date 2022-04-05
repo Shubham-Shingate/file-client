@@ -76,7 +76,7 @@ fn main() -> io::Result<()> {
                                 }
                             } else if input.trim() == PRINT_HIDDEN {
                                 // print hidden directories/files
-
+                                
                             } else if input.trim() == HELP {
                                 printHelp();
                             }
