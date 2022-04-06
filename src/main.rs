@@ -24,29 +24,26 @@ fn main() -> io::Result<()> {
 
             if &data == msg {
                 //Initial Handshake successful
-                println!("Initial handshake was successful !! \n Beginning user input loop...");
+                println!("Initial handshake was successful !! \n Beginning user input loop... \n");
 
                 // loop over user input
                 loop {
-                    println!("CMD>>");
-                    let mut input = String::new();
+                    println!("{}", constants::CURSOR);
+                    let mut cmd = String::new();
                     // collect user input
-                    io::stdin().read_line(&mut input).expect("Error reading input");
+                    io::stdin().read_line(&mut cmd).unwrap();
+                    cmd = cmd.trim().to_owned();
+                    let cmd_vec : Vec<&str> = cmd.split(" ").collect();
 
-                    if input.trim() == constants::QUIT {
-                        println!("exiting the server...");
+                    if cmd_vec[0] == constants::QUIT {
+                        println!("Terminating connection to the server...");
+                        codec.send_message(&cmd)?;
                         exit(0);
-                    } else if input.trim() == constants::PRINT_DIR {
-                        // prompt for path to target directory
-                        println!("Specify a directory to print the contents of:");
-                        let mut dir_input = String::new();
-                        io::stdin()
-                            .read_line(&mut dir_input)
-                            .expect("Error reading input");
-                        let directory_name = format!("./{}", dir_input.trim());
-                        println!("dir specified: {}", directory_name);
-
-                        //stream.write((PRINT_DIR.to_owned() + "#" + &directory_name).as_bytes()).unwrap();
+                    } else if cmd_vec[0] == constants::PRINT_DIR {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        
+                        println!("{}\n{}",constants::SERVER_RESPONSE ,result_str);
                     } else {
 
                     }
