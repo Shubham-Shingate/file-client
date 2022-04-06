@@ -3,18 +3,16 @@ mod constants;
 
 use lib::LinesCodec;
 
-// Commands the client can use
-//const PRINT_DIR: &str = "printdir";        // lists contents of given directory
-//const PRINT_HIDDEN: &str = "ls -al";       // lists all hidden (.) files and directories
-//const QUIT: &str = "quit";                 // quits the file-client using exit()
-//const HELP: &str = "help";                 // lists all possible file operations/commands
+use std::io;
+use std::net::TcpStream;
+use std::process::exit;
+
+use colored::*;
+
 /*
     TODO Commands:
     SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
  */
-use std::io;
-use std::net::TcpStream;
-use std::process::exit;
 
 fn main() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
@@ -33,35 +31,51 @@ fn main() -> io::Result<()> {
 
             if &data == msg {
                 //Initial Handshake successful
-                println!("Initial handshake was successful !! \n Beginning user input loop...");
+                println!("Initial handshake was successful !! \n Beginning user input loop... \n");
 
                 // loop over user input
                 loop {
-                    printHelp(); // prints all available file operations to user
-                    println!("CMD>>");
-                    let mut input = String::new();
+                    println!("{}", constants::CURSOR);
+                    let mut cmd = String::new();
+
                     // collect user input
-                    io::stdin().read_line(&mut input).expect("Error reading input");
+                    io::stdin().read_line(&mut cmd).unwrap();
+                    cmd = cmd.trim().to_owned();
+                    let cmd_vec : Vec<&str> = cmd.split(" ").collect();
 
-                    if input.trim() == constants::QUIT || input.trim() == "q" {
-                        println!("exiting the server...");
+                    if cmd_vec[0] == constants::QUIT {
+                        println!("Terminating connection to the server...");
+                        codec.send_message(&cmd)?;
                         exit(0);
-                    } else if input.trim() == constants::PRINT_DIR || input.trim() == "pdir" {
-                        // prompt for path to target directory
-                        println!("Specify a directory to print the contents of:");
-                        let mut dir_input = String::new();
-                        io::stdin()
-                            .read_line(&mut dir_input)
-                            .expect("Error reading input");
-                        let directory_name = format!("./{}", dir_input.trim());
-                        println!("dir specified: {}", directory_name);
+                    } 
+                    // prints all contents of given directory
+                    // input: [printdir] [directory]
+                    else if cmd_vec[0] == constants::PRINT_DIR {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        
+                        println!("{}",constants::SERVER_RESPONSE);
+                        for e in result_str.split_whitespace() {
+                            println!("{}", e)
+                        }
+                    } 
+                    else if cmd_vec[0] == constants::PRINT_HIDDEN {
+                        // handle printing hidden files/dirs here
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        
+                        println!("{}",constants::SERVER_RESPONSE); 
+                        //println!("{}",result_str);  
+                        for e in result_str.split_whitespace() {
+                            println!("{}", e.bold().red());
+                        }
 
-                        //stream.write((PRINT_DIR.to_owned() + "#" + &directory_name).as_bytes()).unwrap();
-                    } else if input.trim() == constants::PRINT_HIDDEN || input.trim() == "ls -al" {
-                        // prints hidden directories and files
-
-                    } else if input.trim() == constants::HELP || input.trim() == "h" {
-                        printHelp(); 
+                    }
+                    else if cmd_vec[0] == constants::HELP {
+                        printHelp();
+                    }
+                    else {
+                        println!("Please enter a valid command.");
                     }
                 }
             } else {
@@ -76,13 +90,12 @@ fn main() -> io::Result<()> {
     Ok(())
 } // main
 
-
 // prints all file operations/commands available to user
 fn printHelp() {
     println!("*** File Operations / Commands ***");
-    println!("[command]           [shorthand]           [output]");
-    println!("printdir            pdir                  prints all contents of a directory");
-    println!("show-hidden         ls -al                prints all hidden files and directories of current working directory");
-    println!("help                h                     lists file operations / commands to user");
-    println!("quit                q                     exits the server");
+    println!("[command]                       [output]");
+    println!("printdir [directory]            prints all contents of specified directory");
+    println!("printhidden                     prints all hidden files and directories of current working directory");
+    println!("help                            lists file operations / commands to user");
+    println!("quit                            exits the server");
 }
