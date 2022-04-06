@@ -42,40 +42,36 @@ fn main() -> io::Result<()> {
                     io::stdin().read_line(&mut cmd).unwrap();
                     cmd = cmd.trim().to_owned();
                     let cmd_vec : Vec<&str> = cmd.split(" ").collect();
-
-                    if cmd_vec[0] == constants::QUIT {
-                        println!("Terminating connection to the server...");
-                        codec.send_message(&cmd)?;
-                        exit(0);
-                    } 
-                    // prints all contents of given directory
-                    // input: [printdir] [directory]
-                    else if cmd_vec[0] == constants::PRINT_DIR {
-                        codec.send_message(&cmd)?;
-                        let result_str = codec.read_message()?;
-                        
-                        println!("{}",constants::SERVER_RESPONSE);
-                        for e in result_str.split_whitespace() {
-                            println!("{}", e)
-                        }
-                    } 
-                    else if cmd_vec[0] == constants::PRINT_HIDDEN {
-                        // handle printing hidden files/dirs here
-                        codec.send_message(&cmd)?;
-                        let result_str = codec.read_message()?;
-                        
-                        println!("{}",constants::SERVER_RESPONSE); 
-                        //println!("{}",result_str);  
-                        for e in result_str.split_whitespace() {
-                            println!("{}", e.bold().red());
-                        }
-
-                    }
-                    else if cmd_vec[0] == constants::HELP {
-                        printHelp();
-                    }
-                    else {
-                        println!("Please enter a valid command.");
+                    match cmd_vec[0] {
+                        constants::QUIT => {
+                            println!("Terminating connection to the server...");
+                            codec.send_message(&cmd)?;
+                            exit(0);
+                        },
+                        // prints all contents of given directory
+                        // input: [printdir] [directory]
+                        constants::PRINT_DIR => {
+                            codec.send_message(&cmd)?;
+                            let result_str = codec.read_message()?;
+                            
+                            println!("{}",constants::SERVER_RESPONSE);
+                            for e in result_str.split_whitespace() {
+                                println!("{}", e)
+                            }
+                        },
+                        constants::PRINT_HIDDEN => {
+                            // handle printing hidden files/dirs here
+                            codec.send_message(&cmd)?;
+                            let result_str = codec.read_message()?;
+                            
+                            println!("{}",constants::SERVER_RESPONSE); 
+                            //println!("{}",result_str);  
+                            for e in result_str.split_whitespace() {
+                                println!("{}", e.bold().red());
+                            }
+                        },
+                        constants::HELP => printHelp(),
+                        _ => println!("Please enter a valid command."),
                     }
                 }
             } else {
