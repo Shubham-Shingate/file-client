@@ -28,10 +28,6 @@ impl LinesCodec {
         };
     }
 
-    pub fn kill(&mut self) {
-        self.reader.get_mut().shutdown(Shutdown::Both).unwrap();
-    }
-
     /// Write the given message (appending a newline) to the TcpStream
     pub fn send_message(&mut self, message: &str) -> io::Result<()> {
         self.writer.write(&message.as_bytes())?;

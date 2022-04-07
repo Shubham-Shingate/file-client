@@ -3,9 +3,11 @@ mod constants;
 
 use lib::LinesCodec;
 
-use std::io;
+use std::io::{self, BufReader, BufRead};
 use std::net::TcpStream;
 use std::process::exit;
+use std::fs::File;
+use std::path::Path;
 
 use colored::*;
 
@@ -71,6 +73,38 @@ fn main() -> io::Result<()> {
                             }
                         },
                         constants::HELP => printHelp(),
+                        constants::WRITE => {
+                            let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
+                            codec.send_message(&cmd);
+                            if let Ok(file) = File::open(Path::new(cmd_vec[2])){
+                                codec.send_file(&file);
+                            }
+                            else{
+                                println!("Could not open specified file to send");
+                            }
+                            codec.set_timeout(5);
+                            if let Ok(file) = codec.read_file(){
+                                let file = BufReader::new(file);
+                                println!("File Recieved:");
+                                for i in file.lines(){
+                                    println!("{}", i?);
+                                }
+                                codec.set_timeout(0);
+                            }
+                            else{
+                                println!("No Response");
+                            }
+                        },
+                        constants::READ | constants::COPY | constants::MOVE => {
+                            codec.send_message(&cmd)?;
+                            codec.set_timeout(5);
+                            let file = BufReader::new(codec.read_file()?);
+                            println!("File Recieved:");
+                            for i in file.lines(){
+                                println!("{}", i?);
+                            }
+                            codec.set_timeout(0);
+                        },
                         _ => {
                             codec.send_message(&cmd)?;
                             println!("{}", codec.read_message()?);
