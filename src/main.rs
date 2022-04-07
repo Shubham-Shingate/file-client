@@ -71,7 +71,10 @@ fn main() -> io::Result<()> {
                             }
                         },
                         constants::HELP => printHelp(),
-                        _ => println!("Please enter a valid command."),
+                        _ => {
+                            codec.send_message(&cmd)?;
+                            println!("{}", codec.read_message()?);
+                        },
                     }
                 }
             } else {
