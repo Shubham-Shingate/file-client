@@ -54,7 +54,7 @@ fn main() -> io::Result<()> {
                         },
                         // prints all contents of given directory
                         // input: [printdir] [directory]
-                        constants::PRINT_DIR => {
+                        constants::PRINT_DIR | constants::SEARCH => {
                             codec.send_message(&cmd)?;
                             let result_str = codec.read_message()?;
                             
