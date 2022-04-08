@@ -6,7 +6,7 @@ use lib::LinesCodec;
 use std::io::{self, BufReader, BufRead};
 use std::net::TcpStream;
 use std::process::exit;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::path::Path;
 
 use colored::*;
@@ -33,7 +33,9 @@ fn main() -> io::Result<()> {
 
             if &data == msg {
                 //Initial Handshake successful
-                println!("Initial handshake was successful !! \n Beginning user input loop... \n");
+                println!("Initial handshake was successful !!");
+                println!("{}", codec.read_message()?);
+                println!("Beginning user input loop... \n");
 
                 // loop over user input
                 loop {
@@ -76,8 +78,8 @@ fn main() -> io::Result<()> {
                         constants::WRITE => {
                             let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
                             codec.send_message(&cmd);
-                            if let Ok(file) = File::open(Path::new(cmd_vec[2])){
-                                codec.send_file(&file);
+                            if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
+                                codec.send_file(&mut file);
                             }
                             else{
                                 println!("Could not open specified file to send");
@@ -89,19 +91,24 @@ fn main() -> io::Result<()> {
                                 for i in file.lines(){
                                     println!("{}", i?);
                                 }
-                                codec.set_timeout(0);
                             }
                             else{
-                                println!("No Response");
+                                println!("{}", codec.read_message()?);
                             }
+                            codec.set_timeout(0);
                         },
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
                             codec.set_timeout(5);
-                            let file = BufReader::new(codec.read_file()?);
-                            println!("File Recieved:");
-                            for i in file.lines(){
-                                println!("{}", i?);
+                            if let Ok(file) = codec.read_file(){
+                                let file = BufReader::new(file);
+                                println!("File Recieved:");
+                                for i in file.lines(){
+                                    println!("{}", i?);
+                                }
+                            }
+                            else{
+                                println!("No Response");
                             }
                             codec.set_timeout(0);
                         },
