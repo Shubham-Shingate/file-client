@@ -134,6 +134,13 @@ fn main() -> io::Result<()> {
 fn printHelp() {
     println!("*** File Operations / Commands ***");
     println!("[command]                       [output]");
+    println!("read [file]                     returns the contents of a file");
+    println!("write [file] [content]          writes the information in the contet file to the server file");
+    println!("copy [from] [to]                copies a file to a new location");
+    println!("move [from] [to]                moves a file to a new location");
+    println!("del [file]                      deletes a file at a given location");
+    println!("mkdir [directory]               creates a directory at the provided location");
+    println!("rmdir [directory]               removes a provided directory and its contents");
     println!("printdir [directory]            prints all contents of specified directory");
     println!("printhidden                     prints all hidden files and directories of current working directory");
     println!("help                            lists file operations / commands to user");
