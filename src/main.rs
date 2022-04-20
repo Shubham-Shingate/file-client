@@ -6,15 +6,8 @@ use lib::LinesCodec;
 use std::io::{self, BufReader, BufRead};
 use std::net::TcpStream;
 use std::process::exit;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::path::Path;
-
-use colored::*;
-
-/*
-    TODO Commands:
-    SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
- */
 
 fn main() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
@@ -27,8 +20,7 @@ fn main() -> io::Result<()> {
             codec.send_message(msg)?;
             println!("Performing initial handshake....");
 
-            let mut data = String::new();
-            data = codec.read_message()?;
+            let data = codec.read_message()?;
             println!("{}", data);
 
             if &data == msg {
@@ -47,39 +39,35 @@ fn main() -> io::Result<()> {
                     cmd = cmd.trim().to_owned();
                     let cmd_vec : Vec<&str> = cmd.split(" ").collect();
                     match cmd_vec[0] {
+                        // terminates the connection & the program
                         constants::QUIT => {
                             println!("Terminating connection to the server...");
                             codec.send_message(&cmd)?;
                             exit(0);
                         },
-                        // prints all contents of given directory
-                        // input: [printdir] [directory]
-                        constants::PRINT_DIR | constants::SEARCH => {
+                        // prints a one-line message
+                        constants::DELETE | constants::MAKE_DIR | constants::REMOVE_DIR => {
+                            codec.send_message(&cmd)?;
+                            println!("{}", codec.read_message()?);
+                        },
+                        // prints from a recieved list
+                        constants::PRINT_DIR | constants::PRINT_HIDDEN | constants::SEARCH => {
                             codec.send_message(&cmd)?;
                             let result_str = codec.read_message()?;
                             
-                            println!("{}",constants::SERVER_RESPONSE);
+                            println!("{}", constants::SERVER_RESPONSE);
                             for e in result_str.split_whitespace() {
                                 println!("{}", e)
                             }
                         },
-                        constants::PRINT_HIDDEN => {
-                            // handle printing hidden files/dirs here
-                            codec.send_message(&cmd)?;
-                            let result_str = codec.read_message()?;
-                            
-                            println!("{}",constants::SERVER_RESPONSE); 
-                            //println!("{}",result_str);  
-                            for e in result_str.split_whitespace() {
-                                println!("{}", e.bold().red());
-                            }
-                        },
-                        constants::HELP => printHelp(),
+                        // prints help message
+                        constants::HELP => print_help(),
+                        // sends a local file to overwrite server file
                         constants::WRITE => {
                             let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
-                            codec.send_message(&cmd);
+                            codec.send_message(&cmd)?;
                             if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
-                                codec.send_file(&mut file);
+                                codec.send_file(&mut file)?;
                             }
                             else{
                                 println!("Could not open specified file to send");
@@ -97,6 +85,7 @@ fn main() -> io::Result<()> {
                             }
                             codec.set_timeout(0);
                         },
+                        // interacts w/ server file(s), returning final file on success
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
                             codec.set_timeout(5);
@@ -112,26 +101,31 @@ fn main() -> io::Result<()> {
                             }
                             codec.set_timeout(0);
                         },
+                        // invalid command detection moved to server side
                         _ => {
                             codec.send_message(&cmd)?;
                             println!("{}", codec.read_message()?);
                         },
                     }
                 }
-            } else {
+            }
+            // initial handshake failed
+            else {
                 println!("Unexpected reply: {}", data);
             }
         }
+        // connection failure message
         Err(e) => {
             println!("Failed to connect: {}", e);
         }
     }
+    // connection terminated
     println!("Terminated.");
     Ok(())
-} // main
+}
 
 // prints all file operations/commands available to user
-fn printHelp() {
+fn print_help() {
     println!("*** File Operations / Commands ***");
     println!("[command]                       [output]");
     println!("read [file]                     returns the contents of a file");
@@ -143,6 +137,7 @@ fn printHelp() {
     println!("rmdir [directory]               removes a provided directory and its contents");
     println!("printdir [directory]            prints all contents of specified directory");
     println!("printhidden                     prints all hidden files and directories of current working directory");
+    println!("search [term]                   searches for file or directories containg the provided term");
     println!("help                            lists file operations / commands to user");
     println!("quit                            exits the server");
 }
