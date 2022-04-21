@@ -26,6 +26,51 @@ fn main() -> io::Result<()> {
                 //Initial Handshake successful
                 println!("Initial handshake was successful !! \n Beginning user input loop... \n");
 
+                //Siva
+                println!("Welcome to the File Client\nChoose you options\n1.Create a new account 2.Login into your account");
+                let mut choice=String::new();
+                io::stdin().read_line(&mut choice).unwrap();
+                choice = choice.trim().to_owned();
+                codec.send_message(&choice)?;
+                match choice.as_str() {
+                    //ask user to create account
+                    "1" => {
+                        println!("Please Enter your username: ");
+                        let mut username=String::new();
+                        io::stdin().read_line(&mut username).unwrap();
+                        username=username.trim().to_owned();
+                        codec.send_message(&username)?;
+                        println!("Please Enter your password: ");
+                        let mut password=String::new();
+                        io::stdin().read_line(&mut password).unwrap();
+                        password=password.trim().to_owned();
+                        codec.send_message(&password)?;
+                        println!("Please Enter your email: ");
+                        let mut email=String::new();
+                        io::stdin().read_line(&mut email).unwrap();
+                        email=email.trim().to_owned();
+                        codec.send_message(&email)?;
+                    },
+                    "2" => {
+                        println!("Enter you Username: ");
+                        println!("{}", constants::CURSOR);
+                        let mut username=String::new();
+                        io::stdin().read_line(&mut username).unwrap();
+                        username=username.trim().to_owned();
+                        codec.send_message(&username)?;
+                        println!("Enter your password: ");
+                        println!("{}", constants::CURSOR);
+                        let mut password=String::new();
+                        io::stdin().read_line(&mut password).unwrap();
+                        password=password.trim().to_owned();
+                        codec.send_message(&password)?;
+                    },
+                    _ => {
+                        println!("Invalid Choice");
+                        exit(0);
+                    },
+                } //Siva
+
                 // loop over user input
                 loop {
                     println!("{}", constants::CURSOR);
