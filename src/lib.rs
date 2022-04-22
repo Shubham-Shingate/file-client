@@ -54,7 +54,7 @@ impl LinesCodec {
     // Read a received file from the TcpStream
     pub fn read_file(&mut self) -> io::Result<File> {
         let mut file = tempfile()?;
-        io::copy(&mut self.reader, &mut file);
+        io::copy(&mut self.reader, &mut file)?;
         Ok(file)
     }
 }

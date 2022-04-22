@@ -71,36 +71,41 @@ fn main() -> io::Result<()> {
                         constants::HELP => print_help(),
                         // sends a local file to overwrite server file
                         constants::WRITE => {
-                            let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
-                            codec.send_message(&cmd)?;
-                            if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
-                                codec.send_file(&mut file)?;
-                                codec.set_timeout(5);
-                                match codec.read_message()?.as_str() {
-                                    "Ok" => {
-                                        if let Ok(file) = codec.read_file(){
-                                            let file = BufReader::new(file);
-                                            println!("File Recieved:");
-                                            for i in file.lines(){
-                                                println!("{}", i?);
+                            if cmd_vec.len() > 2 {
+                                let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
+                                codec.send_message(&cmd)?;
+                                if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
+                                    codec.send_file(&mut file)?;
+                                    codec.set_timeout(1);
+                                    match codec.read_message()?.as_str() {
+                                        "Ok" => {
+                                            if let Ok(file) = codec.read_file(){
+                                                let file = BufReader::new(file);
+                                                println!("File Recieved:");
+                                                for i in file.lines(){
+                                                    println!("{}", i?);
+                                                }
                                             }
-                                        }
-                                        else{
-                                            println!("No Response");
-                                        }
-                                    },
-                                    x => println!("{}", x),
+                                            else{
+                                                println!("No Response");
+                                            }
+                                        },
+                                        x => println!("{}", x),
+                                    }
+                                    codec.set_timeout(0);
                                 }
-                                codec.set_timeout(0);
+                                else{
+                                    println!("Could not open specified file to send");
+                                }
                             }
                             else{
-                                println!("Could not open specified file to send");
+                                println!("Error running command '{}': Missing file parameter", cmd_vec[0], );
                             }
                         },
                         // interacts w/ server file(s), returning final file on success
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
-                            codec.set_timeout(5);
+                            codec.set_timeout(1);
                             match codec.read_message()?.as_str() {
                                 "Ok" => {
                                     if let Ok(file) = codec.read_file(){
