@@ -26,7 +26,6 @@ fn main() -> io::Result<()> {
             if &data == msg {
                 //Initial Handshake successful
                 println!("Initial handshake was successful !!");
-                println!("{}", codec.read_message()?);
                 println!("Beginning user input loop... \n");
 
                 // loop over user input
@@ -48,16 +47,24 @@ fn main() -> io::Result<()> {
                         // prints a one-line message
                         constants::DELETE | constants::MAKE_DIR | constants::REMOVE_DIR => {
                             codec.send_message(&cmd)?;
-                            println!("{}", codec.read_message()?);
+                            match codec.read_message()?.as_str() {
+                                "Ok" => println!("{}", codec.read_message()?),
+                                x => println!("{}", x),
+                            }
                         },
                         // prints from a recieved list
                         constants::PRINT_DIR | constants::PRINT_HIDDEN | constants::SEARCH => {
                             codec.send_message(&cmd)?;
-                            let result_str = codec.read_message()?;
-                            
-                            println!("{}", constants::SERVER_RESPONSE);
-                            for e in result_str.split_whitespace() {
-                                println!("{}", e)
+                            match codec.read_message()?.as_str() {
+                                "Ok" => {
+                                    let result_str = codec.read_message()?;
+                                    // print each item on a new line
+                                    println!("{}", constants::SERVER_RESPONSE);
+                                    for e in result_str.split_whitespace() {
+                                        println!("{}", e)
+                                    }
+                                },
+                                x => println!("{}", x),
                             }
                         },
                         // prints help message
@@ -68,36 +75,46 @@ fn main() -> io::Result<()> {
                             codec.send_message(&cmd)?;
                             if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
                                 codec.send_file(&mut file)?;
+                                codec.set_timeout(5);
+                                match codec.read_message()?.as_str() {
+                                    "Ok" => {
+                                        if let Ok(file) = codec.read_file(){
+                                            let file = BufReader::new(file);
+                                            println!("File Recieved:");
+                                            for i in file.lines(){
+                                                println!("{}", i?);
+                                            }
+                                        }
+                                        else{
+                                            println!("No Response");
+                                        }
+                                    },
+                                    x => println!("{}", x),
+                                }
+                                codec.set_timeout(0);
                             }
                             else{
                                 println!("Could not open specified file to send");
                             }
-                            codec.set_timeout(5);
-                            if let Ok(file) = codec.read_file(){
-                                let file = BufReader::new(file);
-                                println!("File Recieved:");
-                                for i in file.lines(){
-                                    println!("{}", i?);
-                                }
-                            }
-                            else{
-                                println!("{}", codec.read_message()?);
-                            }
-                            codec.set_timeout(0);
                         },
                         // interacts w/ server file(s), returning final file on success
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
                             codec.set_timeout(5);
-                            if let Ok(file) = codec.read_file(){
-                                let file = BufReader::new(file);
-                                println!("File Recieved:");
-                                for i in file.lines(){
-                                    println!("{}", i?);
-                                }
-                            }
-                            else{
-                                println!("No Response");
+                            match codec.read_message()?.as_str() {
+                                "Ok" => {
+                                    if let Ok(file) = codec.read_file(){
+                                        let file = BufReader::new(file);
+                                        println!("File Recieved:");
+                                        for i in file.lines(){
+                                            println!("{}", i?);
+                                        }
+                                    }
+                                    else{
+                                        println!("No Response");
+                                    }
+                                },
+                                x => println!("{}", x),
                             }
                             codec.set_timeout(0);
                         },
