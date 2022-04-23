@@ -3,7 +3,7 @@ mod constants;
 
 use lib::LinesCodec;
 
-use std::io::{self, BufReader, BufRead};
+use std::io;
 use std::net::TcpStream;
 use std::process::exit;
 use std::fs::OpenOptions;
@@ -76,23 +76,17 @@ fn main() -> io::Result<()> {
                                 codec.send_message(&cmd)?;
                                 if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
                                     codec.send_file(&mut file)?;
-                                    codec.set_timeout(1);
+                                    codec.set_timeout(1)?;
                                     match codec.read_message()?.as_str() {
                                         "Ok" => {
-                                            if let Ok(file) = codec.read_file(){
-                                                let file = BufReader::new(file);
-                                                println!("File Recieved:");
-                                                for i in file.lines(){
-                                                    println!("{}", i?);
-                                                }
-                                            }
-                                            else{
-                                                println!("No Response");
+                                            match codec.read_file() {
+                                                Ok(f) => println!("File Recieved:\n{}", f),
+                                                Err(e) => println!("Error in reception of file: {}", e),
                                             }
                                         },
                                         x => println!("{}", x),
                                     }
-                                    codec.set_timeout(0);
+                                    codec.set_timeout(0)?;
                                 }
                                 else{
                                     println!("Could not open specified file to send");
@@ -105,23 +99,17 @@ fn main() -> io::Result<()> {
                         // interacts w/ server file(s), returning final file on success
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
-                            codec.set_timeout(1);
+                            codec.set_timeout(1)?;
                             match codec.read_message()?.as_str() {
                                 "Ok" => {
-                                    if let Ok(file) = codec.read_file(){
-                                        let file = BufReader::new(file);
-                                        println!("File Recieved:");
-                                        for i in file.lines(){
-                                            println!("{}", i?);
-                                        }
-                                    }
-                                    else{
-                                        println!("No Response");
+                                    match codec.read_file() {
+                                        Ok(f) => println!("File Recieved:\n{}", f),
+                                        Err(e) => println!("Error in reception of file: {}", e),
                                     }
                                 },
                                 x => println!("{}", x),
                             }
-                            codec.set_timeout(0);
+                            codec.set_timeout(0)?;
                         },
                         // invalid command detection moved to server side
                         _ => {

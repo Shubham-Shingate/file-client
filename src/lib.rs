@@ -1,5 +1,5 @@
-use std::io::{self, BufRead, BufReader, BufWriter, LineWriter, Write, Read};
-use std::net::{TcpStream, Shutdown};
+use std::io::{self, BufRead, BufReader, LineWriter, Write, Read};
+use std::net::TcpStream;
 use std::time::Duration;
 use std::fs::File;
 use tempfile::tempfile;
@@ -21,11 +21,12 @@ impl LinesCodec {
     }
 
     // change read timeout
-    pub fn set_timeout(&mut self, time: u64){
+    pub fn set_timeout(&mut self, time: u64) -> io::Result<()> {
         match time{
-            0 => self.reader.get_mut().set_read_timeout(None),
-            _ => self.reader.get_mut().set_read_timeout(Some(Duration::from_secs(time))),
+            0 => self.reader.get_mut().set_read_timeout(None)?,
+            _ => self.reader.get_mut().set_read_timeout(Some(Duration::from_secs(time)))?,
         };
+        Ok(())
     }
 
     /// Write the given message (appending a newline) to the TcpStream
@@ -45,16 +46,18 @@ impl LinesCodec {
 
     // Write the given file (appending a newline) to the TcpStream
     pub fn send_file(&mut self, file: &mut File) -> io::Result<()> {
-        let mut writer = self.writer.get_mut();
+        let writer = self.writer.get_mut();
         io::copy(file, writer)?;
         writer.flush()?;
         Ok(())
     }
 
     // Read a received file from the TcpStream
-    pub fn read_file(&mut self) -> io::Result<File> {
-        let mut file = tempfile()?;
-        io::copy(&mut self.reader, &mut file)?;
-        Ok(file)
+    pub fn read_file(&mut self) -> io::Result<String> {
+        let mut file = tempfile()?; // create tempfile to write to
+        io::copy(&mut self.reader, &mut file)?; // copy tcp to temp file
+        let mut s = String::new();
+        file.read_to_string(&mut s)?;
+        Ok(s) // return tempfile
     }
 }
