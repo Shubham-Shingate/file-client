@@ -16,6 +16,7 @@ fn main() -> io::Result<()> {
             let mut codec = LinesCodec::new(stream)?;
 
             file_ops::make_dir(constants::CLIENT_FILE_STORAGE)?;
+            let current_dir = constants::CLIENT_FILE_STORAGE;
 
             //Perform initial handshake
             let msg = constants::HELLO;
@@ -109,6 +110,12 @@ fn main() -> io::Result<()> {
                         result_vec.into_iter().for_each(|x| println!("{}", x.bold().red()));
                     } else if cmd_vec[0] == constants::MAKE_DIR {
                         codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        println!("{}: {}", constants::SERVER_RESPONSE, result_str);
+                    } else if cmd_vec[0] == constants::PUT_FILE {
+                        codec.send_message(&cmd)?;
+                        let file_data = file_ops::read_file(&(String::from(current_dir)+"/"+cmd_vec[1]))?;
+                        codec.send_message(&file_data)?;
                         let result_str = codec.read_message()?;
                         println!("{}: {}", constants::SERVER_RESPONSE, result_str);
                     }
