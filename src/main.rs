@@ -2,6 +2,7 @@ mod lib;
 mod constants;
 
 use lib::LinesCodec;
+mod file_ops;
 
 use std::io;
 use std::net::TcpStream;
@@ -13,6 +14,8 @@ fn main() -> io::Result<()> {
         Ok(stream) => {
             println!("Successfully connected to server in port 3333");
             let mut codec = LinesCodec::new(stream)?;
+
+            file_ops::make_dir(constants::CLIENT_FILE_STORAGE)?;
 
             //Perform initial handshake
             let msg = constants::HELLO;
@@ -104,8 +107,10 @@ fn main() -> io::Result<()> {
                         println!("{}",constants::SERVER_RESPONSE);
                         let result_vec: Vec<&str> = result_str.split(" ").collect();
                         result_vec.into_iter().for_each(|x| println!("{}", x.bold().red()));
-                    } else {
-
+                    } else if cmd_vec[0] == constants::MAKE_DIR {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        println!("{}: {}", constants::SERVER_RESPONSE, result_str);
                     }
                 }
             } else {
