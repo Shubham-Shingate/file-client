@@ -116,6 +116,7 @@ fn main() -> io::Result<()> {
                         codec.send_message(&cmd)?;
                         let file_data = file_ops::read_file(&(String::from(current_dir)+"/"+cmd_vec[1]))?;
                         codec.send_message(&file_data)?;
+                        codec.send_message("e*-of")?;
                         let result_str = codec.read_message()?;
                         println!("{}: {}", constants::SERVER_RESPONSE, result_str);
                     }
