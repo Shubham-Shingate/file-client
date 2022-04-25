@@ -17,6 +17,4 @@ pub const COPY: &str = "copy";                  // copys a file from a provided 
 pub const DELETE: &str = "del";                 // deletes a file from a provided path
 pub const MAKE_DIR: &str = "mkdir";             // makes directories to a provided path
 pub const REMOVE_DIR: &str = "rmdir";           // removes a directory & all contents from a provided path
-pub const SEARCH: &str = "search";
-//TODO Commands:
-    // SEARCH          - "search"  ---- searches files' content and filenames that match the given search input
+pub const SEARCH: &str = "search";              // searches for files or directories containing a specified term
