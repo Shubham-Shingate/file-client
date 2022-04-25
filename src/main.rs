@@ -75,11 +75,11 @@ fn main() -> io::Result<()> {
                                 let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
                                 codec.send_message(&cmd)?;
                                 if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
-                                    codec.send_file(&mut file)?;
+                                    codec.send_file_as_str(&mut file)?;
                                     codec.set_timeout(1)?;
                                     match codec.read_message()?.as_str() {
                                         "Ok" => {
-                                            match codec.read_file() {
+                                            match codec.read_file_to_str() {
                                                 Ok(f) => println!("File Recieved:\n{}", f),
                                                 Err(e) => println!("Error in reception of file: {}", e),
                                             }

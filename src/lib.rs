@@ -44,7 +44,7 @@ impl LinesCodec {
         Ok(line)
     }
 
-    // Write the given file (appending a newline) to the TcpStream
+    // Write the given file to the TcpStream
     pub fn send_file(&mut self, file: &mut File) -> io::Result<()> {
         let writer = self.writer.get_mut();
         io::copy(file, writer)?;
@@ -58,6 +58,26 @@ impl LinesCodec {
         io::copy(&mut self.reader, &mut file)?; // copy tcp to temp file
         let mut s = String::new();
         file.read_to_string(&mut s)?;
+        Ok(s) // return tempfile
+    }
+
+    // Write the given file to the TcpStream
+    pub fn send_file_as_str(&mut self, file: &mut File) -> io::Result<()> {
+        let mut s = String::new();
+        file.read_to_string(&mut s)?;
+        while let Some(offset) = s.find('\n') {
+            s.replace_range(offset..(offset+1), "#newline#")
+        }
+        self.send_message(&s)?;
+        Ok(())
+    }
+
+    // Read a received file from the TcpStream
+    pub fn read_file_to_str(&mut self) -> io::Result<String> {
+        let mut s = self.read_message()?;
+        while let Some(offset) = s.find("#newline#") {
+            s.replace_range(offset..offset+"#newline#".len(), "\n")
+        }
         Ok(s) // return tempfile
     }
 }
