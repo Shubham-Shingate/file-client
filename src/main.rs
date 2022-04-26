@@ -119,6 +119,10 @@ fn main() -> io::Result<()> {
                         codec.send_message("e*-of")?;
                         let result_str = codec.read_message()?;
                         println!("{}: {}", constants::SERVER_RESPONSE, result_str);
+                    } else if cmd_vec[0] == constants::GET_FILE{
+                        codec.send_message(&cmd);
+                        let file_data = codec.read_file_socket()?;
+                        file_ops::write_file(&(String::from(current_dir)+"/"+cmd_vec[1]) , &file_data)?;
                     }
                 }
             } else {

@@ -33,4 +33,19 @@ impl LinesCodec {
         line.pop(); // Remove the trailing "\n"
         Ok(line)
     }
+
+    pub fn read_file_socket(&mut self) -> io::Result<String> {
+        let mut all_lines = String::new();
+        // Use `BufRead::read_line()` to read all lines from the TcpStream
+        let mut this_line = String::new();
+        while let Ok(_) = self.reader.read_line(&mut this_line) {
+            if this_line.starts_with("e*-o") {
+                break;
+            }
+            all_lines = all_lines + &this_line;
+            this_line.clear();
+        }
+
+        Ok(all_lines)
+    }
 }
