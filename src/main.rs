@@ -5,11 +5,33 @@ use lib::LinesCodec;
 
 use std::io;
 use std::net::TcpStream;
-use std::process::exit;
 use std::fs::OpenOptions;
 use std::path::Path;
 
 fn main() -> io::Result<()> {
+    loop {
+        if let Err(e) = handle_connect() {
+            println!("Error in connection: {}\nReconnect? y/n", e);
+            let mut response = String::new();
+            io::stdin().read_line(&mut response)?;
+            match &response.trim()[..] {
+                "Y" | "y" => continue,
+                "N" | "n" => break,
+                _ => {
+                    println!("Invalid input, assuming n...");
+                    break;
+                }
+            }
+        }
+        else{
+            println!("Goodbye!");
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn handle_connect() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
         Ok(stream) => {
             println!("Successfully connected to server in port 3333");
@@ -34,7 +56,7 @@ fn main() -> io::Result<()> {
                     let mut cmd = String::new();
 
                     // collect user input
-                    io::stdin().read_line(&mut cmd).unwrap();
+                    io::stdin().read_line(&mut cmd)?;
                     cmd = cmd.trim().to_owned();
                     let cmd_vec : Vec<&str> = cmd.split(" ").collect();
                     match cmd_vec[0] {
@@ -42,7 +64,7 @@ fn main() -> io::Result<()> {
                         constants::QUIT => {
                             println!("Terminating connection to the server...");
                             codec.send_message(&cmd)?;
-                            exit(0);
+                            break;
                         },
                         // prints a one-line message
                         constants::DELETE | constants::MAKE_DIR | constants::REMOVE_DIR => {
@@ -76,11 +98,11 @@ fn main() -> io::Result<()> {
                                 codec.send_message(&cmd)?;
                                 if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
                                     codec.send_file_as_str(&mut file)?;
-                                    codec.set_timeout(1)?;
+                                    codec.set_timeout(5)?;
                                     match codec.read_message()?.as_str() {
                                         "Ok" => {
-                                            match codec.read_file_to_str() {
-                                                Ok(f) => println!("File Recieved:\n{}", f),
+                                            match codec.read_file_as_str() {
+                                                Ok(f) => println!("File Written:\n{}", f),
                                                 Err(e) => println!("Error in reception of file: {}", e),
                                             }
                                         },
@@ -99,10 +121,10 @@ fn main() -> io::Result<()> {
                         // interacts w/ server file(s), returning final file on success
                         constants::READ | constants::COPY | constants::MOVE => {
                             codec.send_message(&cmd)?;
-                            codec.set_timeout(1)?;
+                            codec.set_timeout(5)?;
                             match codec.read_message()?.as_str() {
                                 "Ok" => {
-                                    match codec.read_file() {
+                                    match codec.read_file_as_str() {
                                         Ok(f) => println!("File Recieved:\n{}", f),
                                         Err(e) => println!("Error in reception of file: {}", e),
                                     }
@@ -127,6 +149,7 @@ fn main() -> io::Result<()> {
         // connection failure message
         Err(e) => {
             println!("Failed to connect: {}", e);
+            return Err(e);
         }
     }
     // connection terminated
