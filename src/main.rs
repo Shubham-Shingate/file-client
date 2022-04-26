@@ -2,18 +2,21 @@ mod lib;
 mod constants;
 
 use lib::LinesCodec;
+mod file_ops;
 
 use std::io;
 use std::net::TcpStream;
 use std::process::exit;
-use std::fs::OpenOptions;
-use std::path::Path;
+use colored::*;
 
 fn main() -> io::Result<()> {
     match TcpStream::connect("localhost:3333") {
         Ok(stream) => {
             println!("Successfully connected to server in port 3333");
             let mut codec = LinesCodec::new(stream)?;
+
+            file_ops::make_dir(constants::CLIENT_FILE_STORAGE)?;
+            let current_dir = constants::CLIENT_FILE_STORAGE;
 
             //Perform initial handshake
             let msg = constants::HELLO;
@@ -25,129 +28,115 @@ fn main() -> io::Result<()> {
 
             if &data == msg {
                 //Initial Handshake successful
-                println!("Initial handshake was successful !!");
-                println!("Beginning user input loop... \n");
+                println!("Initial handshake was successful !! \n Beginning user input loop... \n");
+
+                let mut logged_in = false;
+                while !logged_in {
+                    println!("Welcome to the File Client\nChoose your options\n1.Create a new account 2.Login into your account");
+                    let mut choice=String::new();
+                    io::stdin().read_line(&mut choice).unwrap();
+                    choice = choice.trim().to_owned();
+                    codec.send_message(&choice)?;
+                    match choice.as_str() {
+
+                        "1" => { //user creates a new account
+                            println!("Please enter your username: ");
+                            let mut username=String::new();
+                            io::stdin().read_line(&mut username).unwrap();
+                            username=username.trim().to_owned();
+                            codec.send_message(&username)?;
+                            println!("Please Enter your password: ");
+                            let mut password=String::new();
+                            io::stdin().read_line(&mut password).unwrap();
+                            password=password.trim().to_owned();
+                            codec.send_message(&password)?;
+                            println!("Please Enter your email: ");
+                            let mut email=String::new();
+                            io::stdin().read_line(&mut email).unwrap();
+                            email=email.trim().to_owned();
+                            codec.send_message(&email)?;
+                        },
+                        "2" => { //User logs into existing account
+                            println!("Enter your username: ");
+                            let mut username=String::new();
+                            io::stdin().read_line(&mut username).unwrap();
+                            username=username.trim().to_owned();
+                            codec.send_message(&username)?;
+                            println!("Enter your password: ");
+                            let mut password=String::new();
+                            io::stdin().read_line(&mut password).unwrap();
+                            password=password.trim().to_owned();
+                            codec.send_message(&password)?;
+                            let response = codec.read_message()?;
+                            if response == "Success" {
+                                println!("Server Response: Login Successfull");
+                                logged_in = true;
+                            } else {
+                                println!("Server Response: {:?}", codec.read_message()?);
+                            }
+                        },
+                        _ => {
+                            println!("Invalid Choice");
+                        }
+                    }
+                }
 
                 // loop over user input
                 loop {
                     println!("{}", constants::CURSOR);
                     let mut cmd = String::new();
-
                     // collect user input
                     io::stdin().read_line(&mut cmd).unwrap();
                     cmd = cmd.trim().to_owned();
-                    let cmd_vec : Vec<&str> = cmd.split(" ").collect();
-                    match cmd_vec[0] {
-                        // terminates the connection & the program
-                        constants::QUIT => {
-                            println!("Terminating connection to the server...");
-                            codec.send_message(&cmd)?;
-                            exit(0);
-                        },
-                        // prints a one-line message
-                        constants::DELETE | constants::MAKE_DIR | constants::REMOVE_DIR => {
-                            codec.send_message(&cmd)?;
-                            match codec.read_message()?.as_str() {
-                                "Ok" => println!("{}", codec.read_message()?),
-                                x => println!("{}", x),
-                            }
-                        },
-                        // prints from a recieved list
-                        constants::PRINT_DIR | constants::PRINT_HIDDEN | constants::SEARCH => {
-                            codec.send_message(&cmd)?;
-                            match codec.read_message()?.as_str() {
-                                "Ok" => {
-                                    let result_str = codec.read_message()?;
-                                    // print each item on a new line
-                                    println!("{}", constants::SERVER_RESPONSE);
-                                    for e in result_str.split_whitespace() {
-                                        println!("{}", e)
-                                    }
-                                },
-                                x => println!("{}", x),
-                            }
-                        },
-                        // prints help message
-                        constants::HELP => print_help(),
-                        // sends a local file to overwrite server file
-                        constants::WRITE => {
-                            if cmd_vec.len() > 2 {
-                                let cmd = cmd_vec[0].to_owned() + " " + cmd_vec[1];
-                                codec.send_message(&cmd)?;
-                                if let Ok(mut file) = OpenOptions::new().read(true).write(true).create(false).open(Path::new(cmd_vec[2])){
-                                    codec.send_file(&mut file)?;
-                                    codec.set_timeout(1)?;
-                                    match codec.read_message()?.as_str() {
-                                        "Ok" => {
-                                            match codec.read_file() {
-                                                Ok(f) => println!("File Recieved:\n{}", f),
-                                                Err(e) => println!("Error in reception of file: {}", e),
-                                            }
-                                        },
-                                        x => println!("{}", x),
-                                    }
-                                    codec.set_timeout(0)?;
-                                }
-                                else{
-                                    println!("Could not open specified file to send");
-                                }
-                            }
-                            else{
-                                println!("Error running command '{}': Missing file parameter", cmd_vec[0], );
-                            }
-                        },
-                        // interacts w/ server file(s), returning final file on success
-                        constants::READ | constants::COPY | constants::MOVE => {
-                            codec.send_message(&cmd)?;
-                            codec.set_timeout(1)?;
-                            match codec.read_message()?.as_str() {
-                                "Ok" => {
-                                    match codec.read_file() {
-                                        Ok(f) => println!("File Recieved:\n{}", f),
-                                        Err(e) => println!("Error in reception of file: {}", e),
-                                    }
-                                },
-                                x => println!("{}", x),
-                            }
-                            codec.set_timeout(0)?;
-                        },
-                        // invalid command detection moved to server side
-                        _ => {
-                            codec.send_message(&cmd)?;
-                            println!("{}", codec.read_message()?);
-                        },
+                    let cmd_vec: Vec<&str> = cmd.split(" ").collect();
+
+                    if cmd_vec[0] == constants::QUIT {
+                        println!("Terminating connection to the server...");
+                        codec.send_message(&cmd)?;
+                        exit(0);
+                    } else if cmd_vec[0] == constants::PRINT_DIR {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+
+                        println!("{}",constants::SERVER_RESPONSE);
+                        let result_vec: Vec<&str> = result_str.split("  ").collect();
+                        result_vec.into_iter().for_each(|x| println!("{}", x));
+                    } else if cmd_vec[0] == constants::PRINT_HIDDEN {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+
+                        println!("{}",constants::SERVER_RESPONSE);
+                        let result_vec: Vec<&str> = result_str.split(" ").collect();
+                        result_vec.into_iter().for_each(|x| println!("{}", x.bold().red()));
+                    } else if cmd_vec[0] == constants::MAKE_DIR {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        println!("{}: {}", constants::SERVER_RESPONSE, result_str);
+                    } else if cmd_vec[0] == constants::PUT_FILE {
+                        codec.send_message(&cmd)?;
+                        let file_data = file_ops::read_file(&(String::from(current_dir)+"/"+cmd_vec[1]))?;
+                        codec.send_message(&file_data)?;
+                        codec.send_message("e*-of")?;
+                        let result_str = codec.read_message()?;
+                        println!("{}: {}", constants::SERVER_RESPONSE, result_str);
+                    } else if cmd_vec[0] == constants::GET_FILE{
+                        codec.send_message(&cmd)?;
+                        let file_data = codec.read_file_socket()?;
+                        file_ops::write_file(&(String::from(current_dir)+"/"+cmd_vec[1]) , &file_data)?;
+                    } else if cmd_vec[0] == constants::REMOVE_FILE {
+                        codec.send_message(&cmd)?;
+                        let result_str = codec.read_message()?;
+                        println!("{}: {}", constants::SERVER_RESPONSE, result_str);
                     }
                 }
-            }
-            // initial handshake failed
-            else {
+            } else {
                 println!("Unexpected reply: {}", data);
             }
         }
-        // connection failure message
         Err(e) => {
             println!("Failed to connect: {}", e);
         }
     }
-    // connection terminated
     println!("Terminated.");
     Ok(())
-}
-
-// prints all file operations/commands available to user
-fn print_help() {
-    println!("*** File Operations / Commands ***");
-    println!("[command]                       [output]");
-    println!("read [file]                     returns the contents of a file");
-    println!("write [file] [content]          writes the information in the contet file to the server file");
-    println!("copy [from] [to]                copies a file to a new location");
-    println!("move [from] [to]                moves a file to a new location");
-    println!("del [file]                      deletes a file at a given location");
-    println!("mkdir [directory]               creates a directory at the provided location");
-    println!("rmdir [directory]               removes a provided directory and its contents");
-    println!("printdir [directory]            prints all contents of specified directory");
-    println!("printhidden                     prints all hidden files and directories of current working directory");
-    println!("search [term]                   searches for file or directories containg the provided term");
-    println!("help                            lists file operations / commands to user");
-    println!("quit                            exits the server");
 }

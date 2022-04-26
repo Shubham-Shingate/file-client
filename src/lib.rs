@@ -1,13 +1,10 @@
-use std::io::{self, BufRead, BufReader, LineWriter, Write, Read};
+use std::io::{self, BufRead, Write};
 use std::net::TcpStream;
-use std::time::Duration;
-use std::fs::File;
-use tempfile::tempfile;
 
 pub struct LinesCodec {
     // Our buffered reader & writers
-    reader: BufReader<TcpStream>,
-    writer: LineWriter<TcpStream>,
+    reader: io::BufReader<TcpStream>,
+    writer: io::LineWriter<TcpStream>,
 }
 
 impl LinesCodec {
@@ -15,49 +12,40 @@ impl LinesCodec {
     pub fn new(stream: TcpStream) -> io::Result<Self> {
         // Both BufReader and LineWriter need to own a stream
         // We can clone the stream to simulate splitting Tx & Rx with `try_clone()`
-        let writer = LineWriter::new(stream.try_clone()?);
-        let reader = BufReader::new(stream);
+        let writer = io::LineWriter::new(stream.try_clone()?);
+        let reader = io::BufReader::new(stream);
         Ok(Self { reader, writer })
     }
 
-    // change read timeout
-    pub fn set_timeout(&mut self, time: u64) -> io::Result<()> {
-        match time{
-            0 => self.reader.get_mut().set_read_timeout(None)?,
-            _ => self.reader.get_mut().set_read_timeout(Some(Duration::from_secs(time)))?,
-        };
-        Ok(())
-    }
-
-    /// Write the given message (appending a newline) to the TcpStream
+    /// Write the given message to the TcpStream
     pub fn send_message(&mut self, message: &str) -> io::Result<()> {
         self.writer.write(&message.as_bytes())?;
-        self.writer.write(&['\n' as u8])?; // This will also signal a `writer.flush()` for us; thanks LineWriter!
+        // This will also signal a `writer.flush()` for us; thanks LineWriter!
+        self.writer.write(&['\n' as u8])?;
         Ok(())
     }
 
     /// Read a received message from the TcpStream
     pub fn read_message(&mut self) -> io::Result<String> {
         let mut line = String::new();
-        self.reader.read_line(&mut line)?; // Use `BufRead::read_line()` to read a line from the TcpStream
+        // Use `BufRead::read_line()` to read a line from the TcpStream
+        self.reader.read_line(&mut line)?;
         line.pop(); // Remove the trailing "\n"
         Ok(line)
     }
 
-    // Write the given file (appending a newline) to the TcpStream
-    pub fn send_file(&mut self, file: &mut File) -> io::Result<()> {
-        let writer = self.writer.get_mut();
-        io::copy(file, writer)?;
-        writer.flush()?;
-        Ok(())
-    }
+    pub fn read_file_socket(&mut self) -> io::Result<String> {
+        let mut all_lines = String::new();
+        // Use `BufRead::read_line()` to read all lines from the TcpStream
+        let mut this_line = String::new();
+        while let Ok(_) = self.reader.read_line(&mut this_line) {
+            if this_line.starts_with("e*-o") {
+                break;
+            }
+            all_lines = all_lines + &this_line;
+            this_line.clear();
+        }
 
-    // Read a received file from the TcpStream
-    pub fn read_file(&mut self) -> io::Result<String> {
-        let mut file = tempfile()?; // create tempfile to write to
-        io::copy(&mut self.reader, &mut file)?; // copy tcp to temp file
-        let mut s = String::new();
-        file.read_to_string(&mut s)?;
-        Ok(s) // return tempfile
+        Ok(all_lines)
     }
 }
