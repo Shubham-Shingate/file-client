@@ -121,8 +121,14 @@ fn main() -> io::Result<()> {
                         println!("{}: {}", constants::SERVER_RESPONSE, result_str);
                     } else if cmd_vec[0] == constants::GET_FILE{
                         codec.send_message(&cmd)?;
-                        let file_data = codec.read_file_socket()?;
-                        file_ops::write_file(&(String::from(current_dir)+"/"+cmd_vec[1]) , &file_data)?;
+                        let result = codec.read_message()?;
+
+                        if result == "Success" {
+                            let file_data = codec.read_file_socket()?;
+                            file_ops::write_file(&(String::from(current_dir)+"/"+cmd_vec[1]) , &file_data)?;
+                        } else {
+                            println!("{}: {}", constants::SERVER_RESPONSE, result);
+                        }
                     } else if cmd_vec[0] == constants::REMOVE_FILE {
                         codec.send_message(&cmd)?;
                         let result_str = codec.read_message()?;
